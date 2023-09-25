@@ -102,55 +102,71 @@
 #define ArduCAM_H
 #include "memorysaver.h"
 #if defined ( RASPBERRY_PI ) 
-#else
+#elif defined ( ARDUINO )
 	#include "Arduino.h"
 	#include <pins_arduino.h>
 	#include "memorysaver.h"
+
+	#define arducam_sleep_ms(duration) delay(duration)
+#elif defined ( PICO_BOARD )
+	#pragma info "using PICO includes"
+	#include <stdio.h>
+	#include "pico/stdlib.h"
+	#include "hardware/dma.h"
+	#include "hardware/clocks.h"
+	#include "hardware/i2c.h"
+	#include "hardware/spi.h"
+	#include "hardware/irq.h"
+	#include "pico/binary_info.h"
+
+	#define regtype volatile uint8_t
+	#define regsize uint8_t
+	#define byte uint8_t
 #endif
 
 #if defined (__AVR__)
-#define cbi(reg, bitmask) *reg &= ~bitmask
-#define sbi(reg, bitmask) *reg |= bitmask
-#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
-#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
-#define cport(port, data) port &= data
-#define sport(port, data) port |= data
-#define swap(type, i, j) {type t = i; i = j; j = t;}
-#define fontbyte(x) pgm_read_byte(&cfont.font[x])  
-#define regtype volatile uint8_t
-#define regsize uint8_t
+	#define cbi(reg, bitmask) *reg &= ~bitmask
+	#define sbi(reg, bitmask) *reg |= bitmask
+	#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
+	#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
+	#define cport(port, data) port &= data
+	#define sport(port, data) port |= data
+	#define swap(type, i, j) {type t = i; i = j; j = t;}
+	#define fontbyte(x) pgm_read_byte(&cfont.font[x])  
+	#define regtype volatile uint8_t
+	#define regsize uint8_t
 #endif
 
 #if defined(__SAM3X8E__)
 
-#define cbi(reg, bitmask) *reg &= ~bitmask
-#define sbi(reg, bitmask) *reg |= bitmask
+	#define cbi(reg, bitmask) *reg &= ~bitmask
+	#define sbi(reg, bitmask) *reg |= bitmask
 
-#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
-#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
+	#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
+	#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
 
-#define cport(port, data) port &= data
-#define sport(port, data) port |= data
+	#define cport(port, data) port &= data
+	#define sport(port, data) port |= data
 
-#define swap(type, i, j) {type t = i; i = j; j = t;}
-#define fontbyte(x) cfont.font[x]  
+	#define swap(type, i, j) {type t = i; i = j; j = t;}
+	#define fontbyte(x) cfont.font[x]  
 
-#define regtype volatile uint32_t
-#define regsize uint32_t
+	#define regtype volatile uint32_t
+	#define regsize uint32_t
 
-#define PROGMEM
+	#define PROGMEM
 
-#define pgm_read_byte(x)        (*((char *)x))
-#define pgm_read_word(x)        ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
-#define pgm_read_byte_near(x)   (*((char *)x))
-#define pgm_read_byte_far(x)    (*((char *)x))
-#define pgm_read_word_near(x)   ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
-#define pgm_read_word_far(x)    ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x))))
-#define PSTR(x)  x
-#if defined F
-	#undef F
-#endif
-#define F(X) (X)	
+	#define pgm_read_byte(x)        (*((char *)x))
+	#define pgm_read_word(x)        ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
+	#define pgm_read_byte_near(x)   (*((char *)x))
+	#define pgm_read_byte_far(x)    (*((char *)x))
+	#define pgm_read_word_near(x)   ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
+	#define pgm_read_word_far(x)    ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x))))
+	#define PSTR(x)  x
+	#if defined F
+		#undef F
+	#endif
+	#define F(X) (X)	
 #endif	
 
 #if defined(ESP8266)
@@ -224,14 +240,16 @@
 	#define regsize uint32_t 
 	#define byte uint8_t
 	#define cbi(reg, bitmask) digitalWrite(bitmask, LOW)
-  #define sbi(reg, bitmask) digitalWrite(bitmask, HIGH)
-  #define PROGMEM
+	#define sbi(reg, bitmask) digitalWrite(bitmask, HIGH)
+	#define PROGMEM
 	
 	#define PSTR(x)  x
 	#if defined F
-	#undef F
+		#undef F
 	#endif
 	#define F(X) (X)
+
+	#define arducam_sleep_ms(duration) arducam_delay_ms(duration)
 #endif
 
 #if defined(ARDUINO_ARCH_NRF52)
@@ -253,59 +271,82 @@
 #endif
 
 #if defined(TEENSYDUINO)
- #define cbi(reg, bitmask) digitalWriteFast(bitmask, LOW)
- #define sbi(reg, bitmask) digitalWriteFast(bitmask, HIGH)
-#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
-#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
- #define cport(port, data) port &= data
-#define sport(port, data) port |= data
- #define swap(type, i, j) {type t = i; i = j; j = t;}
- #define fontbyte(x) cfont.font[x]  
- #define regtype volatile uint8_t
-#define regsize uint8_t
- #endif
+	#define cbi(reg, bitmask) digitalWriteFast(bitmask, LOW)
+	#define sbi(reg, bitmask) digitalWriteFast(bitmask, HIGH)
+	#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
+	#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
+	#define cport(port, data) port &= data
+	#define sport(port, data) port |= data
+	#define swap(type, i, j) {type t = i; i = j; j = t;}
+	#define fontbyte(x) cfont.font[x]  
+	#define regtype volatile uint8_t
+	#define regsize uint8_t
+#endif
 
 #if defined(NRF52840_XXAA)
 
- #define cbi(reg, bitmask) digitalWrite(bitmask, LOW)
- #define sbi(reg, bitmask) digitalWrite(bitmask, HIGH)
+	#define cbi(reg, bitmask) digitalWrite(bitmask, LOW)
+	#define sbi(reg, bitmask) digitalWrite(bitmask, HIGH)
 
-#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
-#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
+	#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
+	#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
 
-#define cport(port, data) port &= data
-#define sport(port, data) port |= data
+	#define cport(port, data) port &= data
+	#define sport(port, data) port |= data
 
-#define swap(type, i, j) {type t = i; i = j; j = t;}
-#define fontbyte(x) cfont.font[x]  
+	#define swap(type, i, j) {type t = i; i = j; j = t;}
+	#define fontbyte(x) cfont.font[x]  
 
-#define regtype volatile uint32_t
-#define regsize uint32_t
+	#define regtype volatile uint32_t
+	#define regsize uint32_t
 
-#define PROGMEM
+	#define PROGMEM
 
-#if defined F
-	#undef F
-#endif
-#define F(X) (X)
+	#if defined F
+		#undef F
+	#endif
+	#define F(X) (X)
 #endif
 
 #if defined (ARDUINO_ARCH_STM32)
-#define cbi(reg, bitmask) *reg &= ~bitmask
-#define sbi(reg, bitmask) *reg |= bitmask
+	#define cbi(reg, bitmask) *reg &= ~bitmask
+	#define sbi(reg, bitmask) *reg |= bitmask
 
-#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
-#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
+	#define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
+	#define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
 
-#define cport(port, data) port &= data
-#define sport(port, data) port |= data
+	#define cport(port, data) port &= data
+	#define sport(port, data) port |= data
 
-#define swap(type, i, j) {type t = i; i = j; j = t;}
-#define fontbyte(x) cfont.font[x]
-#define regtype volatile uint32_t
-#define regsize uint32_t
+	#define swap(type, i, j) {type t = i; i = j; j = t;}
+	#define fontbyte(x) cfont.font[x]
+	#define regtype volatile uint32_t
+	#define regsize uint32_t
 #endif
 
+#if defined( PICO_BOARD )
+	#define cbi(reg, bitmask) gpio_put(bitmask, 0)
+	#define sbi(reg, bitmask) gpio_put(bitmask, 1)
+
+	#define PROGMEM
+	#define arducam_sleep_ms(duration) sleep_ms(duration)
+
+	extern unsigned char usart_symbol;
+	extern unsigned char usart_Command;
+
+	/*spi pin source*/
+	#define SPI_PORT spi0
+	#define PIN_SCK  2
+	#define PIN_MOSI 3
+	#define PIN_MISO 4
+	#define PIN_CS   10
+
+	/*i2c pin source */
+	#define I2C_PORT i2c0
+	#define PIN_SDA  8
+	#define PIN_SCL  9
+	#define WRITE_BIT 0x80
+#endif
 
 /****************************************************/
 /* Sensor related definition 												*/
@@ -646,6 +687,9 @@ class ArduCAM
 	public:
 	ArduCAM( void );
 	ArduCAM(byte model ,int CS);
+	#if defined (PICO_BOARD)
+	void Arducam_init(void);
+	#endif
 	void InitCAM( void );
 	
 	void CS_HIGH(void);
