@@ -144,6 +144,9 @@ ArduCAM::ArduCAM(byte model, int CS) {
 #elif defined(ARDUINO)
   pinMode(CS, OUTPUT);
   sbi(P_CS, B_CS)
+#elif defined(PICO_BOARD)
+  *P_CS = CS;
+  sbi(P_CS, B_CS);
 #else
   sbi(P_CS, B_CS);
 #endif
@@ -186,7 +189,7 @@ ArduCAM::ArduCAM(byte model, int CS) {
   case OV5642:
   case MT9T112:
   case MT9D112:
-#if defined(RASPBERRY_PI)
+#if defined(RASPBERRY_PI) || defined(PICO_BOARD)
     sensor_addr = 0x3c;
 #else
     sensor_addr = 0x78;
@@ -195,7 +198,7 @@ ArduCAM::ArduCAM(byte model, int CS) {
   case OV2640:
   case OV9650:
   case OV9655:
-#if defined(RASPBERRY_PI)
+#if defined(RASPBERRY_PI) || defined(PICO_BOARD)
     sensor_addr = 0x30;
 #else
     sensor_addr = 0x60;
@@ -204,6 +207,8 @@ ArduCAM::ArduCAM(byte model, int CS) {
   default:
 #if defined(RASPBERRY_PI)
     sensor_addr = 0x21;
+#elif defined (PICO_BOARD)
+	sensor_addr = 0x60;
 #else
     sensor_addr = 0x42;
 #endif
@@ -218,18 +223,17 @@ ArduCAM::ArduCAM(byte model, int CS) {
 }
 
 #if defined(PICO_BOARD)
-void ArduCAM:: Arducam_init(void)
-{
-    // This example will use I2C0 on GPIO4 (SDA) and GPIO5 (SCL)
+void ArduCAM::Arducam_init(void) {
+  // This example will use I2C0 on GPIO4 (SDA) and GPIO5 (SCL)
   i2c_init(I2C_PORT, 100 * 1000);
   gpio_set_function(PIN_SDA, GPIO_FUNC_I2C);
   gpio_set_function(PIN_SCL, GPIO_FUNC_I2C);
   gpio_pull_up(PIN_SDA);
   gpio_pull_up(PIN_SCL);
   // Make the I2C pins available to picotool
-  bi_decl( bi_2pins_with_func(PIN_SDA, PIN_SCL, GPIO_FUNC_I2C));
-    // This example will use SPI0 at 0.5MHz.
-  spi_init(SPI_PORT, 4 * 1000*1000);
+  bi_decl(bi_2pins_with_func(PIN_SDA, PIN_SCL, GPIO_FUNC_I2C));
+  // This example will use SPI0 at 0.5MHz.
+  spi_init(SPI_PORT, 4 * 1000 * 1000);
   gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
   gpio_set_function(PIN_SCK, GPIO_FUNC_SPI);
   gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
@@ -680,8 +684,8 @@ set_fifo_bust
 
 #endif
 
-    void
-    ArduCAM::set_fifo_burst() {
+void
+ArduCAM::set_fifo_burst() {
 #if defined(RASPBERRY_PI)
   transfer(BURST_FIFO_READ);
 #elif defined(ARDUINO)
@@ -705,6 +709,14 @@ uint8_t ArduCAM::read_reg(uint8_t addr) {
   uint8_t data;
 #if defined(RASPBERRY_PI)
   data = bus_read(addr);
+#elif defined(PICO_BOARD)
+  uint8_t value = 0;
+  addr = addr & 0x7f;
+  cbi(P_CS, B_CS);
+  spi_write_blocking(SPI_PORT, &addr, 1);
+  spi_read_blocking(SPI_PORT, 0, &value, 1);
+  sbi(P_CS, B_CS);
+  return value;
 #else
   data = bus_read(addr & 0x7F);
 #endif
@@ -714,6 +726,14 @@ uint8_t ArduCAM::read_reg(uint8_t addr) {
 void ArduCAM::write_reg(uint8_t addr, uint8_t data) {
 #if defined(RASPBERRY_PI)
   bus_write(addr, data);
+#elif defined(PICO_BOARD)
+  uint8_t buf[2];
+  buf[0] = addr | WRITE_BIT; // remove read bit as this is a write
+  buf[1] = data;
+  cbi(P_CS, B_CS);
+  spi_write_blocking(SPI_PORT, buf, 2);
+  sbi(P_CS, B_CS);
+  sleep_ms(1);
 #else
   bus_write(addr | 0x80, data);
 #endif
@@ -2960,7 +2980,7 @@ byte ArduCAM::rdSensorReg8_8(uint8_t regID, uint8_t *regDat) {
 byte ArduCAM::wrSensorReg8_16(int regID, int regDat) {
 #if defined(RASPBERRY_PI)
   arducam_i2c_write16(regID, regDat);
-#elif defined (PICO_BOARD)
+#elif defined(PICO_BOARD)
 #else
   Wire.beginTransmission(sensor_addr >> 1);
   Wire.write(regID & 0x00FF);
@@ -2977,7 +2997,7 @@ byte ArduCAM::wrSensorReg8_16(int regID, int regDat) {
 byte ArduCAM::rdSensorReg8_16(uint8_t regID, uint16_t *regDat) {
 #if defined(RASPBERRY_PI)
   arducam_i2c_read16(regID, regDat);
-#elif defined (PICO_BOARD)
+#elif defined(PICO_BOARD)
 #else
   uint8_t temp;
   Wire.beginTransmission(sensor_addr >> 1);
